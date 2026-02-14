@@ -1,0 +1,28 @@
+{
+  "timestamp": "2026-02-14T16:48:25.431091",
+  "tests": {
+    "dev/tests/test_visuals_and_personas.py": {
+      "success": false,
+      "test_count": 0,
+      "failures": 0,
+      "errors": 0,
+      "output": "============================= test session starts ==============================\nplatform darwin -- Python 3.13.0, pytest-9.0.2, pluggy-1.6.0 -- /Library/Frameworks/Python.framework/Versions/3.13/bin/python3\ncachedir: .pytest_cache\nrootdir: /Users/akashk/Desktop/Finance Dashboard/TradeMirror\nplugins: anyio-4.12.1\ncollecting ... collected 10 items\n\ndev/tests/test_visuals_and_personas.py::TestFinancialVisualizer::test_complete_dashboard_creation PASSED [ 10%]\ndev/tests/test_visuals_and_personas.py::TestFinancialVisualizer::test_dashboard_summary_statistics PASSED [ 20%]\ndev/tests/test_visuals_and_personas.py::TestFinancialVisualizer::test_equity_curve_creation PASSED [ 30%]\ndev/tests/test_visuals_and_personas.py::TestFinancialVisualizer::test_monthly_performance_chart PASSED [ 40%]\ndev/tests/test_visuals_and_personas.py::TestFinancialVisualizer::test_weekday_heatmap_creation PASSED [ 50%]\ndev/tests/test_visuals_and_personas.py::TestAIPersonas::test_coaching_request_with_persona \ndev/tests/test_visuals_and_personas.py::TestAIPersonas::test_coaching_request_with_persona PASSED [ 60%]\ndev/tests/test_visuals_and_personas.py::TestAIPersonas::test_invalid_persona_handling PASSED [ 70%]\ndev/tests/test_visuals_and_personas.py::TestAIPersonas::test_persona_availability PASSED [ 80%]\ndev/tests/test_visuals_and_personas.py::TestAIPersonas::test_persona_prompt_generation \ndev/tests/test_visuals_and_personas.py::TestAIPersonas::test_persona_prompt_generation PASSED [ 90%]\ndev/tests/test_visuals_and_personas.py::TestIntegrationScenarios::test_full_dashboard_with_ai_analysis FAILED [100%]\n\n=================================== FAILURES ===================================\n________ TestIntegrationScenarios.test_full_dashboard_with_ai_analysis _________\ndev/tests/test_visuals_and_personas.py:262: in test_full_dashboard_with_ai_analysis\n    self.assertEqual(advice['status'], 'success')\nE   AssertionError: 'error' != 'success'\nE   - error\nE   + success\n------------------------------ Captured log call -------------------------------\nERROR    ai_coach:ai_coach.py:298 Ollama API error: 404\n=========================== short test summary info ============================\nFAILED dev/tests/test_visuals_and_personas.py::TestIntegrationScenarios::test_full_dashboard_with_ai_analysis\n========== 1 failed, 9 passed, 3 warnings, 6 subtests passed in 0.75s ==========\n",
+      "stderr": "",
+      "return_code": 1
+    }
+  },
+  "verifications": {
+    "visualization": true,
+    "sample_dashboard": true
+  },
+  "summary": {
+    "total_test_suites": 1,
+    "successful_suites": 0,
+    "total_tests": 0,
+    "total_failures": 0,
+    "total_errors": 0,
+    "verifications_passed": 2,
+    "total_verifications": 2,
+    "overall_success": false
+  }
+}

@@ -1,0 +1,179 @@
+# 🛡️ SECURITY-CRITICAL: Prevent sensitive financial data leakage
+
+# 🔒 Data Files & Databases
+data/
+downloads/
+trade_data.db
+*.db
+*.sqlite
+*.sqlite3
+portfolio_data/
+trading_logs/
+
+# 📊 Trading Data Files
+*.csv
+*.xlsx
+*.xls
+*.json  # Except configuration files (see exceptions below)
+
+# 🔑 Credentials & Secrets (ABSOLUTE MUST-IGNORE)
+credentials.json
+token.json
+.env
+.env.local
+.env.production
+.env.development
+secrets.json
+config/secrets.json
+vault/
+.vault-token
+api_keys.json
+private_keys/
+*.pem
+*.key
+*.crt
+certificates/
+
+# 🧠 AI & Model Files
+models/
+ollama_models/
+*.gguf
+*.bin
+ai_cache/
+
+# 🐳 Container & Deployment Artifacts
+docker-compose.override.yml
+docker-compose.local.yml
+kubernetes/local/
+helm/values-local.yaml
+
+# 🖥️ System & IDE Files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.coverage
+.pytest_cache/
+.pytest_cache/
+.tox/
+.nox/
+coverage.xml
+htmlcov/
+.pyre/
+.mypy_cache/
+
+# 🍎 macOS System Files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# 🪟 Windows System Files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msp
+*.msm
+
+# 🐧 Linux System Files
+*~
+.*.sw[op]
+*.[oa]
+*.rej
+*.bak
+*.tmp
+*.log
+
+# 📁 Development Artifacts
+node_modules/
+dist/
+build/
+out/
+target/
+*.egg-info/
+*.egg
+.sass-cache/
+*.sass
+
+# 🔧 Build & Compilation
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+*.class
+*.jar
+*.war
+*.ear
+
+# 🧪 Test & Debug Files
+tests/artifacts/
+test_output/
+debug.log
+*.stackdump
+
+# 🌐 Network & Communication
+ipc_sockets/
+*.sock
+zmq_ipc/
+network_dumps/
+
+# 🔐 Encryption & Security Artifacts
+encryption_keys/
+crypto_cache/
+fernet_keys/
+vault_shares/
+.keyring
+
+# 📱 Mobile & Cross-platform
+*.apk
+*.ipa
+*.dmg
+*.app
+
+# 🎨 Design & Documentation Drafts
+design_drafts/
+docs/private/
+*.sketch
+*.fig
+*.xd
+
+# 📈 Analytics & Monitoring
+analytics_data/
+monitoring_logs/
+performance_profiles/
+
+# 🔄 Temporary & Cache Files
+tmp/
+temp/
+cache/
+*.tmp
+*.temp
+.session
+
+# 🎯 Exceptions: Allow specific JSON configs (NOT secrets)
+!config/app_config.json
+!config/ui_settings.json
+!package.json
+!tsconfig.json
+!webpack.config.js
+
+# 🏗️ Project Structure Exceptions
+!.gitignore
+!.gitattributes
+README.md
+LICENSE
