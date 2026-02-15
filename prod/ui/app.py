@@ -195,62 +195,72 @@ if 'ai_config' not in st.session_state:
 st.markdown('<div class="main-header">🚀 TradeMirror Pro</div>', unsafe_allow_html=True)
 st.markdown('<div class="tagline">Decentralized AI Trading Analytics</div>', unsafe_allow_html=True)
 
-# --- ⚙️ SIDEBAR: THE CONNECTION MANAGER ---
+# --- ⚙️ SIDEBAR: RESTRICTED CONTROL CENTER ---
 with st.sidebar:
     st.markdown('<div class="connection-manager">', unsafe_allow_html=True)
-    st.header("🔌 Compute Settings")
+    st.header("⚡ Compute Settings")
     
-    # The "BYO-Compute" Toggle
+    # SIMPLIFIED MODES: No more "Bring Your Own Key"
     compute_mode = st.radio(
-        "Choose Your AI Brain:",
-        ["☁️ Community Cloud (Free)", "🏠 Local / Private Server (Your GPU)", "🔑 Personal API Key"],
-        help="Run AI on our free tier, your own 5070, or your private API key."
+        "Select Performance Tier:",
+        ["☁️ Cloud (Community)", "🚀 Professional (Local/Admin)"],
+        help="Community is free. Professional connects to dedicated GPU infrastructure."
     )
 
-    # DYNAMIC SETTINGS BASED ON SELECTION
-    if compute_mode == "☁️ Community Cloud (Free)":
-        st.info("🟢 Using TradeMirror's Shared Groq Tier")
-        st.session_state['ai_config'] = {
-            "type": "cloud_shared", 
-            "key": None,  # Will be loaded from server secrets when needed
-            "url": None
-        }
-
-    elif compute_mode == "🏠 Local / Private Server (Your GPU)":
-        st.warning("Ensure your local Ollama is exposed via Ngrok.")
-        # User inputs THEIR public Ngrok URL
-        local_url = st.text_input("Enter Ngrok / Public URL:", placeholder="https://xyz.ngrok-free.app")
+    # --- OPTION A: CLOUD (The Default for Clients) ---
+    if compute_mode == "☁️ Cloud (Community)":
+        st.success("🟢 Connected to TradeMirror Cloud")
+        st.caption("Powered by Groq LPU™ Inference Engine")
         
-        if local_url:
-            st.session_state['ai_config'] = {
-                "type": "local_tunnel",
-                "key": None,
-                "url": f"{local_url.rstrip('/')}/api/generate"  # We append the endpoint automatically
-            }
-            if st.button("Test Connection 🔧"):
-                try:
-                    # Simple ping to check if user's GPU is reachable
-                    test_url = f"{local_url.rstrip('/')}/api/tags"
-                    response = requests.get(test_url, timeout=10)
-                    if response.status_code == 200:
-                        st.success("✅ GPU Connected!")
-                    else:
-                        st.error(f"❌ Server responded with status {response.status_code}")
-                except requests.exceptions.RequestException as e:
-                    st.error(f"❌ Connection failed: {str(e)}")
-                except Exception as e:
-                    st.error(f"❌ Unexpected error: {str(e)}")
+        # Load the key securely from Secrets
+        try:
+            if "GROQ_API_KEY" in st.secrets:
+                st.session_state['ai_config'] = {
+                    "type": "cloud_shared", 
+                    "key": st.secrets["GROQ_API_KEY"], 
+                    "url": None
+                }
+            else:
+                st.error("🚨 System Error: Cloud Key not found in Secrets.")
+        except Exception as e:
+            st.error(f"🚨 Configuration Error: {str(e)}")
 
-    elif compute_mode == "🔑 Personal API Key":
-        # RAM-ONLY STORAGE: We do not save this to a DB.
-        user_key = st.text_input("Paste Groq/OpenAI Key:", type="password")
-        if user_key:
-            st.session_state['ai_config'] = {
-                "type": "personal_api",
-                "key": user_key,
-                "url": None
-            }
-            st.success("🔒 Key Cached in Session (RAM)")
+    # --- OPTION B: LOCAL (Locked for You) ---
+    elif compute_mode == "🚀 Professional (Local/Admin)":
+        st.warning("🔒 Admin Access Required")
+        
+        # Simple Password Lock
+        admin_pass = st.text_input("Enter Admin Password:", type="password")
+        
+        # Check against the password you set in Secrets
+        try:
+            correct_password = st.secrets.get("ADMIN_PASSWORD", "admin")
+            if admin_pass == correct_password: 
+                st.info("🔓 Access Granted: RTX 5070 Connection")
+                local_url = st.text_input("Ngrok Tunnel URL:", placeholder="https://xyz.ngrok-free.app")
+                
+                if local_url:
+                    st.session_state['ai_config'] = {
+                        "type": "local_tunnel",
+                        "key": None,
+                        "url": f"{local_url.rstrip('/')}/api/generate"
+                    }
+                    if st.button("Test Local Connection 🔧"):
+                        try:
+                            test_url = f"{local_url.rstrip('/')}/api/tags"
+                            response = requests.get(test_url, timeout=10)
+                            if response.status_code == 200:
+                                st.success("✅ GPU Connected!")
+                            else:
+                                st.error(f"❌ Server responded with status {response.status_code}")
+                        except requests.exceptions.RequestException as e:
+                            st.error(f"❌ Connection failed: {str(e)}")
+                        except Exception as e:
+                            st.error(f"❌ Unexpected error: {str(e)}")
+            else:
+                st.caption("Restricted to Enterprise Clients only.")
+        except Exception as e:
+            st.error(f"🚨 Admin authentication error: {str(e)}")
 
     st.divider()
     
@@ -260,8 +270,7 @@ with st.sidebar:
     config_type = current_config.get('type', 'Not configured')
     type_labels = {
         'cloud_shared': 'Community Cloud',
-        'local_tunnel': 'Local GPU Tunnel', 
-        'personal_api': 'Personal API Key'
+        'local_tunnel': 'Local GPU Tunnel'
     }
     st.info(f"**Mode:** {type_labels.get(config_type, config_type)}")
     
