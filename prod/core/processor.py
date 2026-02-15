@@ -6,6 +6,8 @@ import hashlib
 import os
 from datetime import datetime
 import warnings
+from io import StringIO, BytesIO
+from typing import BinaryIO, TextIO
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -34,32 +36,80 @@ class ZerodhaDataProcessor:
             r'\b\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\b'  # Credit card patterns
         ]
         
-    def validate_file_security(self, file_path: str) -> bool:
+    def validate_file_security(self, file_source: Union[str, BinaryIO, TextIO]) -> bool:
         """
         Validate file security and check for potential threats.
+        Supports both file paths and file-like objects.
         """
         try:
-            # Check if file exists
-            if not os.path.exists(file_path):
-                raise DataSecurityError(f"File not found: {file_path}")
+            file_name = ""
+            file_size = 0
+            file_ext = ""
             
-            # Check file size (prevent large file attacks)
-            file_size = os.path.getsize(file_path)
+            # Handle different types of file sources
+            if isinstance(file_source, str):
+                # File path
+                file_name = os.path.basename(file_source)
+                if not os.path.exists(file_source):
+                    raise DataSecurityError(f"File not found: {file_source}")
+                file_size = os.path.getsize(file_source)
+                _, file_ext = os.path.splitext(file_source)
+            elif hasattr(file_source, 'name'):
+                # File-like object with name attribute
+                file_name = os.path.basename(file_source.name)
+                # Try to get file size
+                if hasattr(file_source, 'size'):
+                    file_size = file_source.size
+                elif hasattr(file_source, 'seek') and hasattr(file_source, 'tell'):
+                    # For file-like objects, determine size by seeking
+                    current_pos = file_source.tell()
+                    file_source.seek(0, 2)  # Seek to end
+                    file_size = file_source.tell()
+                    file_source.seek(current_pos)  # Restore position
+                else:
+                    # Default size if we can't determine
+                    file_size = 0
+                    
+                _, file_ext = os.path.splitext(file_name)
+            else:
+                # Generic file-like object without name
+                file_name = "uploaded_file"
+                # Try to determine size
+                if hasattr(file_source, 'seek') and hasattr(file_source, 'tell'):
+                    current_pos = file_source.tell()
+                    file_source.seek(0, 2)  # Seek to end
+                    file_size = file_source.tell()
+                    file_source.seek(current_pos)  # Restore position
+                file_ext = ".bin"  # Default extension
+                
+            # Security checks
             if file_size > 50 * 1024 * 1024:  # 50MB limit
                 raise DataSecurityError(f"File too large: {file_size} bytes")
-            
-            # Check file extension
-            _, ext = os.path.splitext(file_path)
-            if ext.lower() not in self.supported_extensions:
-                raise DataSecurityError(f"Unsupported file type: {ext}")
+                
+            if file_ext.lower() not in self.supported_extensions:
+                raise DataSecurityError(f"Unsupported file type: {file_ext}")
                 
             # Generate file hash for integrity checking
-            with open(file_path, 'rb') as f:
-                file_hash = hashlib.sha256(f.read()).hexdigest()
-            
-            logger.info(f"File security check passed. Hash: {file_hash[:16]}...")
+            if isinstance(file_source, str):
+                with open(file_source, 'rb') as f:
+                    file_hash = hashlib.sha256(f.read()).hexdigest()
+            else:
+                # For file-like objects, read from current position
+                current_pos = file_source.tell() if hasattr(file_source, 'tell') else 0
+                file_source.seek(0)  # Go to beginning
+                content = file_source.read()
+                if isinstance(content, str):
+                    content = content.encode('utf-8')
+                file_hash = hashlib.sha256(content).hexdigest()
+                # Restore file pointer
+                if hasattr(file_source, 'seek'):
+                    file_source.seek(current_pos)
+                    
+            logger.info(f"File security check passed for {file_name}. Hash: {file_hash[:16]}...")
             return True
             
+        except DataSecurityError:
+            raise
         except Exception as e:
             logger.error(f"Security validation failed: {str(e)}")
             raise DataSecurityError(f"Security validation failed: {str(e)}")
@@ -233,19 +283,49 @@ class ZerodhaDataProcessor:
         
         return df
     
-    def load_zerodha_pnl(self, file_path: str) -> pd.DataFrame:
+    def load_zerodha_pnl(self, file_source: Union[str, BinaryIO, TextIO]) -> pd.DataFrame:
         """
         Main method to load and process Zerodha P&L data.
+        Supports both file paths and file-like objects.
         """
         try:
             # Security validation
-            self.validate_file_security(file_path)
+            self.validate_file_security(file_source)
             
-            # Load data
-            if file_path.endswith(('.xlsx', '.xls')):
-                df = pd.read_excel(file_path)
+            # Determine file type and load data
+            if isinstance(file_source, str):
+                # File path
+                is_excel = file_source.endswith(('.xlsx', '.xls'))
+            elif hasattr(file_source, 'name'):
+                # File-like object with name
+                is_excel = file_source.name.endswith(('.xlsx', '.xls'))
             else:
-                df = pd.read_csv(file_path)
+                # For other file-like objects, we need to determine type differently
+                # This is a limitation - ideally the caller should specify
+                is_excel = False  # Default to CSV
+            
+            # Load data based on type
+            if is_excel:
+                if isinstance(file_source, (str, BinaryIO)):
+                    df = pd.read_excel(file_source)
+                else:
+                    # For text file objects, we need to handle differently
+                    content = file_source.read()
+                    if isinstance(content, str):
+                        # Create a string IO object
+                        bio = BytesIO(content.encode('utf-8'))
+                        df = pd.read_excel(bio)
+                    else:
+                        df = pd.read_excel(BytesIO(content))
+            else:
+                if isinstance(file_source, (str, TextIO, BinaryIO)):
+                    df = pd.read_csv(file_source)
+                else:
+                    content = file_source.read()
+                    if isinstance(content, str):
+                        df = pd.read_csv(StringIO(content))
+                    else:
+                        df = pd.read_csv(BytesIO(content))
             
             logger.info(f"Loaded data with shape: {df.shape}")
             
@@ -369,10 +449,10 @@ class ZerodhaDataProcessor:
         return max_consecutive
 
 # Convenience functions for backward compatibility
-def load_zerodha_pnl(file_path: str) -> pd.DataFrame:
-    """Backward compatible function"""
+def load_zerodha_pnl(file_source: Union[str, BinaryIO, TextIO]) -> pd.DataFrame:
+    """Backward compatible function that supports file paths and file-like objects"""
     processor = ZerodhaDataProcessor()
-    return processor.load_zerodha_pnl(file_path)
+    return processor.load_zerodha_pnl(file_source)
 
 def calculate_metrics(df: pd.DataFrame) -> Dict[str, Union[float, int, str]]:
     """Backward compatible function"""

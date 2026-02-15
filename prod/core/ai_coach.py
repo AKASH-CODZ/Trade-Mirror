@@ -484,3 +484,360 @@ def quick_coaching_advice(pnl: float, win_rate: float, risk_reward: float,
     """Quick coaching advice function with persona support"""
     coach = SecureAICoach(ollama_url)
     return coach.get_quick_assessment(pnl, win_rate, risk_reward, persona)
+
+
+"""
+Simplified AI Handler for Control Center Architecture
+Unified interface for both Local (Ollama) and Cloud (Groq) AI providers
+"""
+
+import requests
+import os
+import logging
+from typing import Optional
+from datetime import datetime
+
+# Conditional import for Groq
+try:
+    from groq import Groq
+    GROQ_AVAILABLE = True
+except ImportError:
+    GROQ_AVAILABLE = False
+    logging.warning("Groq library not available. Cloud mode will not work.")
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+class AIHandler:
+    """
+    Simplified AI handler with Control Center architecture.
+    Single interface for both Local (Ollama) and Cloud (Groq) providers.
+    """
+    
+    def __init__(self):
+        self.base_url_local = "http://localhost:11434/api/generate"
+        self.default_model = "llama3"
+        
+    def get_analysis(self, prompt: str, provider: str = "Local (Ollama)", 
+                     api_key: Optional[str] = None, model_name: str = "llama3") -> str:
+        """
+        Single function to handle BOTH Local and Cloud AI.
+        
+        Args:
+            prompt: The analysis prompt
+            provider: "Local (Ollama)" or "Cloud (Groq)"
+            api_key: Groq API key (required for cloud mode)
+            model_name: Model to use (default: llama3)
+            
+        Returns:
+            AI-generated analysis or error message
+        """
+        try:
+            # --- OPTION 1: LOCAL (RTX 5070) ---
+            if provider == "Local (Ollama)":
+                try:
+                    payload = {
+                        "model": model_name,
+                        "prompt": prompt,
+                        "stream": False,
+                        "options": {
+                            "temperature": 0.7,
+                            "top_p": 0.9
+                        }
+                    }
+                    logger.info("Sending request to local Ollama service")
+                    response = requests.post(self.base_url_local, json=payload, timeout=60)
+                    
+                    if response.status_code == 200:
+                        result = response.json()
+                        return result.get('response', "⚠️ Error: No response from Ollama.")
+                    else:
+                        return f"❌ Error: Ollama returned status {response.status_code}"
+                        
+                except requests.exceptions.ConnectionError:
+                    return "❌ Error: Ollama is not running. Run 'ollama serve' in terminal."
+                except requests.exceptions.Timeout:
+                    return "⏰ Error: Ollama request timed out. Try again or check model loading."
+                except Exception as e:
+                    return f"Error: {str(e)}"
+
+            # --- OPTION 2: CLOUD (Groq) ---
+            elif provider == "Cloud (Groq)":
+                if not api_key:
+                    return "⚠️ Error: Groq API Key is missing in Settings."
+                
+                if not GROQ_AVAILABLE:
+                    return "📦 Error: Groq library not installed. Run: pip install groq"
+                
+                try:
+                    logger.info("Sending request to Groq Cloud API")
+                    client = Groq(api_key=api_key)
+                    completion = client.chat.completions.create(
+                        model="llama3-8b-8192",
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=0.7,
+                        max_tokens=1000
+                    )
+                    return completion.choices[0].message.content
+                    
+                except Exception as e:
+                    return f"Error: {str(e)}"
+            
+            else:
+                return f"❓ Unknown provider: {provider}. Use 'Local (Ollama)' or 'Cloud (Groq)'"
+                
+        except Exception as e:
+            logger.error(f"AI analysis failed: {str(e)}")
+            return f"Error: {str(e)}"
+
+    def health_check(self, provider: str = "Local (Ollama)", api_key: Optional[str] = None) -> dict:
+        """Check if the selected AI provider is available"""
+        try:
+            if provider == "Local (Ollama)":
+                try:
+                    response = requests.get("http://localhost:11434/api/tags", timeout=5)
+                    return {
+                        "status": "available" if response.status_code == 200 else "unavailable",
+                        "details": "Ollama service running" if response.status_code == 200 else "Ollama not responding"
+                    }
+                except:
+                    return {
+                        "status": "unavailable",
+                        "details": "Ollama not running. Start with: ollama serve"
+                    }
+            
+            elif provider == "Cloud (Groq)":
+                if not api_key:
+                    return {
+                        "status": "unavailable",
+                        "details": "API key required for Groq"
+                    }
+                
+                if not GROQ_AVAILABLE:
+                    return {
+                        "status": "unavailable",
+                        "details": "Groq library not installed"
+                    }
+                
+                try:
+                    client = Groq(api_key=api_key)
+                    # Simple test call
+                    client.chat.completions.create(
+                        model="llama3-8b-8192",
+                        messages=[{"role": "user", "content": "test"}],
+                        max_tokens=1
+                    )
+                    return {
+                        "status": "available",
+                        "details": "Groq API connected"
+                    }
+                except Exception as e:
+                    return {
+                        "status": "unavailable",
+                        "details": f"Groq API error: {str(e)}"
+                    }
+            
+            return {
+                "status": "unknown",
+                "details": f"Unknown provider: {provider}"
+            }
+            
+        except Exception as e:
+            return {
+                "status": "error",
+                "details": f"Health check failed: {str(e)}"
+            }
+
+# Initialize for import
+ai_engine = AIHandler()
+
+
+"""
+Decentralized AI Handler for TradeMirror Pro
+Universal AI Router supporting multiple compute backends
+"""
+
+import requests
+import os
+import logging
+from typing import Optional, Dict, Any
+from datetime import datetime
+
+# Conditional import for Groq
+try:
+    from groq import Groq
+    GROQ_AVAILABLE = True
+except ImportError:
+    GROQ_AVAILABLE = False
+    logging.warning("Groq library not available. Cloud modes will not work.")
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def get_analysis(prompt: str, config: Dict[str, Any]) -> str:
+    """
+    Universal AI Router for Decentralized Architecture.
+    
+    Args:
+        prompt: The analysis prompt
+        config: Configuration dictionary with keys:
+            - 'type': 'cloud_shared', 'local_tunnel', or 'personal_api'
+            - 'key': API key (optional)
+            - 'url': Endpoint URL (optional)
+            
+    Returns:
+        AI-generated analysis or error message
+    """
+    ai_type = config.get('type', 'unknown')
+    
+    try:
+        # --- SCENARIO A: LOCAL GPU (Your 5070 via Tunnel) ---
+        if ai_type == "local_tunnel":
+            url = config.get('url')
+            if not url:
+                return "⚠️ Error: No tunnel URL provided for local GPU."
+            
+            try:
+                payload = {
+                    "model": "llama3",
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.7,
+                        "top_p": 0.9
+                    }
+                }
+                logger.info(f"Sending request to local tunnel: {url}")
+                response = requests.post(url, json=payload, timeout=60)
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    return result.get('response', "⚠️ Error: Invalid response from Local Server.")
+                else:
+                    return f"❌ Error: Local server returned status {response.status_code}"
+                    
+            except requests.exceptions.ConnectionError:
+                return "❌ Error: Could not connect to your local GPU. Check Ngrok tunnel."
+            except requests.exceptions.Timeout:
+                return "⏰ Error: Local GPU request timed out."
+            except Exception as e:
+                return f"🚨 Local GPU Error: {str(e)}"
+
+        # --- SCENARIO B: CLOUD API (Shared or Personal) ---
+        elif ai_type in ["cloud_shared", "personal_api"]:
+            api_key = config.get('key')
+            
+            # For shared cloud, try to get key from environment/secrets
+            if ai_type == "cloud_shared" and not api_key:
+                # Try various sources for the shared API key
+                api_key = (
+                    os.getenv('GROQ_API_KEY') or
+                    os.getenv('TRADEMIRROR_GROQ_KEY') or
+                    None
+                )
+            
+            if not api_key:
+                if ai_type == "cloud_shared":
+                    return "⚠️ Error: No shared API key configured on server."
+                else:
+                    return "⚠️ Error: No personal API key provided."
+            
+            if not GROQ_AVAILABLE:
+                return "📦 Error: Groq library not installed. Run: pip install groq"
+            
+            try:
+                logger.info(f"Sending request to Groq API ({ai_type})")
+                client = Groq(api_key=api_key)
+                completion = client.chat.completions.create(
+                    model="llama3-8b-8192",
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.7,
+                    max_tokens=1500
+                )
+                return completion.choices[0].message.content
+                
+            except Exception as e:
+                return f"🚨 Cloud API Error: {str(e)}"
+        
+        else:
+            return f"❓ Unknown compute type: {ai_type}. Use 'cloud_shared', 'local_tunnel', or 'personal_api'"
+            
+    except Exception as e:
+        logger.error(f"AI analysis failed: {str(e)}")
+        return f"🚨 System Error: {str(e)}"
+
+def health_check(config: Dict[str, Any]) -> dict:
+    """Check if the selected AI compute is available"""
+    ai_type = config.get('type', 'unknown')
+    
+    try:
+        if ai_type == "local_tunnel":
+            url = config.get('url')
+            if not url:
+                return {
+                    "status": "unavailable",
+                    "details": "No tunnel URL provided"
+                }
+            
+            try:
+                # Test endpoint
+                test_url = url.replace('/api/generate', '/api/tags')
+                response = requests.get(test_url, timeout=10)
+                return {
+                    "status": "available" if response.status_code == 200 else "unavailable",
+                    "details": "Local GPU tunnel connected" if response.status_code == 200 else f"Server responded with {response.status_code}"
+                }
+            except Exception as e:
+                return {
+                    "status": "unavailable",
+                    "details": f"Cannot reach local GPU: {str(e)}"
+                }
+        
+        elif ai_type in ["cloud_shared", "personal_api"]:
+            api_key = config.get('key')
+            
+            if ai_type == "cloud_shared" and not api_key:
+                api_key = os.getenv('GROQ_API_KEY')
+            
+            if not api_key:
+                return {
+                    "status": "unavailable",
+                    "details": "API key required"
+                }
+            
+            if not GROQ_AVAILABLE:
+                return {
+                    "status": "unavailable",
+                    "details": "Groq library not installed"
+                }
+            
+            try:
+                client = Groq(api_key=api_key)
+                # Simple test call
+                client.chat.completions.create(
+                    model="llama3-8b-8192",
+                    messages=[{"role": "user", "content": "test"}],
+                    max_tokens=1
+                )
+                return {
+                    "status": "available",
+                    "details": "Cloud API connected"
+                }
+            except Exception as e:
+                return {
+                    "status": "unavailable",
+                    "details": f"Cloud API error: {str(e)}"
+                }
+        
+        return {
+            "status": "unknown",
+            "details": f"Unknown compute type: {ai_type}"
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "details": f"Health check failed: {str(e)}"
+        }
